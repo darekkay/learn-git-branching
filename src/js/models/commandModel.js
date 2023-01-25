@@ -3,7 +3,6 @@ var Backbone = require('backbone');
 var Errors = require('../util/errors');
 
 var ParseWaterfall = require('../level/parseWaterfall').ParseWaterfall;
-var LevelStore = require('../stores/LevelStore');
 var intl = require('../intl');
 
 var CommandProcessError = Errors.CommandProcessError;
@@ -206,7 +205,9 @@ var Command = Backbone.Model.extend({
 
   finishWith: function(deferred) {
     this.set('status', 'finished');
-    deferred.resolve();
+    if (deferred) {
+      deferred.resolve();
+    }
   },
 
   addWarning: function(msg) {
@@ -279,16 +280,6 @@ var Command = Backbone.Model.extend({
 
   parseAll: function() {
     var rawInput = this.get('rawStr');
-    const aliasMap = LevelStore.getAliasMap();
-    for (var i = 0; i<Object.keys(aliasMap).length; i++) {
-      var alias = Object.keys(aliasMap)[i];
-      var searcher = new RegExp(alias + "(\\s|$)", "g");
-      if (searcher.test(rawInput)) {
-        rawInput = rawInput.replace(searcher, aliasMap[alias] + ' ');
-        break;
-      }
-    }
-
     var results = this.get('parseWaterfall').parseAll(rawInput);
 
     if (!results) {

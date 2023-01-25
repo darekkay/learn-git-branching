@@ -9,7 +9,6 @@ var TreeCompare = require('../graph/treeCompare');
 
 var Graph = require('../graph');
 var Errors = require('../util/errors');
-var Main = require('../app');
 var Commands = require('../commands');
 var GitError = Errors.GitError;
 var CommandResult = Errors.CommandResult;
@@ -56,75 +55,6 @@ GitEngine.prototype.initUniqueID = function() {
       return prepend ? prepend + n++ : n++;
     };
   })();
-};
-
-GitEngine.prototype.handleModeChange = function(vcs, callback) {
-  if (this.mode === vcs) {
-    // don't fire event aggressively
-    callback();
-    return;
-  }
-  Main.getEvents().trigger('vcsModeChange', {mode: vcs});
-  var chain = this.setMode(vcs);
-  if (this.origin) {
-    this.origin.setMode(vcs, function() {});
-  }
-
-  if (!chain) {
-    callback();
-    return;
-  }
-  // we have to do it async
-  chain.then(callback);
-};
-
-GitEngine.prototype.getIsHg = function() {
-  return this.mode === 'hg';
-};
-
-GitEngine.prototype.setMode = function(vcs) {
-  var switchedToHg = (this.mode === 'git' && vcs === 'hg');
-  this.mode = vcs;
-  if (!switchedToHg) {
-    return;
-  }
-  // if we are switching to mercurial then we have some
-  // garbage collection and other tidying up to do. this
-  // may or may not require a refresh so lets check.
-  var deferred = Q.defer();
-  deferred.resolve();
-  var chain = deferred.promise;
-
-  // this stuff is tricky because we don't animate when
-  // we didn't do anything, but we DO animate when
-  // either of the operations happen. so a lot of
-  // branching ahead...
-  var neededUpdate = this.updateAllBranchesForHg();
-  if (neededUpdate) {
-    chain = chain.then(function() {
-      return this.animationFactory.playRefreshAnimationSlow(this.gitVisuals);
-    }.bind(this));
-
-    // ok we need to refresh anyways, so do the prune after
-    chain = chain.then(function() {
-      var neededPrune = this.pruneTree();
-      if (!neededPrune) {
-        return;
-      }
-      return this.animationFactory.playRefreshAnimation(this.gitVisuals);
-    }.bind(this));
-
-    return chain;
-  }
-
-  // ok might need prune though
-  var pruned = this.pruneTree();
-  if (!pruned) {
-    // do sync
-    return;
-  }
-
-  return this.animationFactory.playRefreshAnimation(this.gitVisuals);
 };
 
 GitEngine.prototype.assignLocalRepo = function(repo) {
@@ -1756,23 +1686,6 @@ GitEngine.prototype.updateBranchesFromSet = function(commitSet) {
         branchesToUpdate[branchJSON.id] = true;
     });
   }, this);
-
-  var branchList = branchesToUpdate.map(function(val, id) {
-    return id;
-  });
-  return this.updateBranchesForHg(branchList);
-};
-
-GitEngine.prototype.updateAllBranchesForHgAndPlay = function(branchList) {
-  return this.updateBranchesForHg(branchList) &&
-    this.animationFactory.playRefreshAnimationSlow(this.gitVisuals);
-};
-
-GitEngine.prototype.updateAllBranchesForHg = function() {
-  var branchList = this.branchCollection.map(function(branch) {
-    return branch.get('id');
-  });
-  return this.updateBranchesForHg(branchList);
 };
 
 GitEngine.prototype.syncRemoteBranchFills = function() {
@@ -1790,53 +1703,12 @@ GitEngine.prototype.syncRemoteBranchFills = function() {
   }, this);
 };
 
-GitEngine.prototype.updateBranchesForHg = function(branchList) {
-  var hasUpdated = false;
-  branchList.forEach(function (branchID) {
-    // ok now just check if this branch has a more recent commit available.
-    // that mapping is easy because we always do rebase alt id --
-    // theres no way to have C3' and C3''' but no C3''. so just
-    // bump the ID once -- if thats not filled in we are updated,
-    // otherwise loop until you find undefined
-    var commitID = this.getCommitFromRef(branchID).get('id');
-    var altID = this.getBumpedID(commitID);
-    if (!this.refs[altID]) {
-      return;
-    }
-    hasUpdated = true;
-
-    var lastID;
-    while (this.refs[altID]) {
-      lastID = altID;
-      altID = this.rebaseAltID(altID);
-    }
-
-    // last ID is the one we want to update to
-    this.setTargetLocation(this.refs[branchID], this.refs[lastID]);
-  }, this);
-
-  if (!hasUpdated) {
-    return false;
-  }
-  return true;
-};
-
-GitEngine.prototype.updateCommitParentsForHgRebase = function(commitSet) {
-  var anyChange = false;
-  Object.keys(commitSet).forEach(function(commitID) {
-    var commit = this.refs[commitID];
-    var thisUpdated = commit.checkForUpdatedParent(this);
-    anyChange = anyChange || thisUpdated;
-  }, this);
-  return anyChange;
-};
-
 GitEngine.prototype.pruneTreeAndPlay = function() {
   return this.pruneTree() &&
     this.animationFactory.playRefreshAnimationSlow(this.gitVisuals);
 };
 
-GitEngine.prototype.pruneTree = function(doPrintWarning = true) {
+GitEngine.prototype.pruneTree = function() {
   var set = this.getUpstreamBranchSet();
   // don't prune commits that HEAD depends on
   var headSet = Graph.getUpstreamSet(this, 'HEAD');
@@ -1857,9 +1729,6 @@ GitEngine.prototype.pruneTree = function(doPrintWarning = true) {
     // returning nothing will perform
     // the switch sync
     return;
-  }
-  if (this.command && doPrintWarning) {
-    this.command.addWarning(intl.str('hg-prune-tree'));
   }
 
   toDelete.forEach(function (commit) {
@@ -2062,75 +1931,6 @@ GitEngine.prototype.dateSortFunc = function(cA, cB) {
   return GitEngine.prototype.idSortFunc(cA, cB);
 };
 
-GitEngine.prototype.hgRebase = function(destination, base) {
-  var deferred = Q.defer();
-  var chain = this.rebase(destination, base, {
-    dontResolvePromise: true,
-    deferred: deferred
-  });
-
-  // was upstream or something
-  if (!chain) {
-    return;
-  }
-
-  // ok lets grab the merge base first
-  var commonAncestor = this.getCommonAncestor(destination, base);
-  var baseCommit = this.getCommitFromRef(base);
-  // we need everything BELOW ourselves...
-  var downstream = this.getDownstreamSet(base);
-  // and we need to go upwards to the stop set
-  var stopSet = Graph.getUpstreamSet(this, destination);
-  var upstream = this.getUpstreamDiffSetFromSet(stopSet, base);
-
-  // and NOWWWwwww get all the descendants of this set
-  var moreSets = [];
-  Object.keys(upstream).forEach(function(id) {
-    moreSets.push(this.getDownstreamSet(id));
-  }, this);
-
-  var mainSet = {};
-  mainSet[baseCommit.get('id')] = true;
-  [upstream, downstream].concat(moreSets).forEach(function(set) {
-    Object.keys(set).forEach(function(id) {
-      mainSet[id] = true;
-    });
-  });
-
-  // we also need the branches POINTING to main set
-  var branchMap = {};
-  var upstreamSet = this.getUpstreamBranchSet();
-  Object.keys(mainSet).forEach(function(commitID) {
-    // now loop over that commits branches
-    upstreamSet[commitID].forEach(function(branchJSON) {
-      branchMap[branchJSON.id] = true;
-    });
-  });
-
-  var branchList = Object.keys(branchMap);
-
-  chain = chain.then(function() {
-    // now we just moved a bunch of commits, but we haven't updated the
-    // dangling guys. lets do that and then prune
-    var anyChange = this.updateCommitParentsForHgRebase(mainSet);
-    if (!anyChange) {
-      return;
-    }
-    return this.animationFactory.playRefreshAnimationSlow(this.gitVisuals);
-  }.bind(this));
-
-  chain = chain.then(function() {
-    return this.updateAllBranchesForHgAndPlay(branchList);
-  }.bind(this));
-
-  chain = chain.then(function() {
-    // now that we have moved branches, lets prune
-    return this.pruneTreeAndPlay();
-  }.bind(this));
-
-  this.animationQueue.thenFinish(chain, deferred);
-};
-
 GitEngine.prototype.rebase = function(targetSource, currentLocation, options) {
   // first some conditions
   if (this.isUpstreamOf(targetSource, currentLocation)) {
@@ -2228,109 +2028,6 @@ GitEngine.prototype.getInteractiveRebaseCommits = function(targetSource, current
   }
 
   return toRebase;
-};
-
-GitEngine.prototype.rebaseInteractiveTest = function(targetSource, currentLocation, options) {
-  options = options || {};
-
-  // Get the list of commits that would be displayed to the user
-  var toRebase = this.getInteractiveRebaseCommits(targetSource, currentLocation);
-
-  var rebaseMap = {};
-  toRebase.forEach(function (commit) {
-    var id = commit.get('id');
-    rebaseMap[id] = commit;
-  });
-
-  var rebaseOrder;
-  if (options['interactiveTest'].length === 0) {
-    // If no commits were explicitly specified for the rebase, act like the user didn't change anything
-    // in the rebase dialog and hit confirm
-    rebaseOrder = toRebase;
-  } else {
-    // Get the list and order of commits specified
-    var idsToRebase = options['interactiveTest'][0].split(',');
-
-    // Verify each chosen commit exists in the list of commits given to the user
-    var extraCommits = [];
-    rebaseOrder = [];
-    idsToRebase.forEach(function (id) {
-      if (id in rebaseMap) {
-        rebaseOrder.push(rebaseMap[id]);
-      } else {
-        extraCommits.push(id);
-      }
-    });
-
-    if (extraCommits.length > 0) {
-      throw new GitError({
-        msg: intl.todo('Hey those commits don\'t exist in the set!')
-      });
-    }
-  }
-
-  this.rebaseFinish(rebaseOrder, {}, targetSource, currentLocation);
-};
-
-GitEngine.prototype.rebaseInteractive = function(targetSource, currentLocation, options) {
-  options = options || {};
-
-  // there are a reduced set of checks now, so we can't exactly use parts of the rebase function
-  // but it will look similar.
-  var toRebase = this.getInteractiveRebaseCommits(targetSource, currentLocation);
-
-  // now do stuff :D since all our validation checks have passed, we are going to defer animation
-  // and actually launch the dialog
-  this.animationQueue.set('defer', true);
-
-  var deferred = Q.defer();
-  deferred.promise
-  .then(function(userSpecifiedRebase) {
-    // first, they might have dropped everything (annoying)
-    if (!userSpecifiedRebase.length) {
-      throw new CommandResult({
-        msg: intl.str('git-result-nothing')
-      });
-    }
-
-    // finish the rebase crap and animate!
-    this.rebaseFinish(userSpecifiedRebase, {}, targetSource, currentLocation);
-  }.bind(this))
-  .fail(function(err) {
-    this.filterError(err);
-    this.command.set('error', err);
-    this.animationQueue.start();
-  }.bind(this))
-  .done();
-
-  // If we have a solution provided, set up the GUI to display it by default
-  var initialCommitOrdering;
-  if (options.initialCommitOrdering && options.initialCommitOrdering.length > 0) {
-    var rebaseMap = {};
-    toRebase.forEach(function (commit) {
-      rebaseMap[commit.get('id')] = true;
-    });
-
-    // Verify each chosen commit exists in the list of commits given to the user
-    initialCommitOrdering = [];
-    options.initialCommitOrdering[0].split(',').forEach(function (id) {
-      if (!rebaseMap[id]) {
-        throw new GitError({
-          msg: intl.todo('Hey those commits don\'t exist in the set!')
-        });
-      }
-      initialCommitOrdering.push(id);
-    });
-  }
-
-  var InteractiveRebaseView = require('../views/rebaseView').InteractiveRebaseView;
-  // interactive rebase view will reject or resolve our promise
-  new InteractiveRebaseView({
-    deferred: deferred,
-    toRebase: toRebase,
-    initialCommitOrdering: initialCommitOrdering,
-    aboveAll: options.aboveAll
-  });
 };
 
 GitEngine.prototype.filterRebaseCommits = function(
@@ -2497,7 +2194,7 @@ GitEngine.prototype.merge = function(targetSource, options) {
   // since we specify parent 1 as the first parent, it is the "main" parent
   // and the node will be displayed below that branch / commit / whatever
   var commitParents = [parent1];
-  
+
   if (!options.squash) {
     // a squash commit doesn't include the reference to the second parent
     commitParents.push(parent2);
@@ -2697,13 +2394,10 @@ GitEngine.prototype.externalRefresh = function() {
 
 GitEngine.prototype.dispatch = function(command, deferred) {
   this.command = command;
-  var vcs = command.get('vcs');
   var executeCommand = function() {
     this.dispatchProcess(command, deferred);
   }.bind(this);
-  // handle mode change will either execute sync or
-  // animate during tree pruning / etc
-  this.handleModeChange(vcs, executeCommand);
+  executeCommand();
 };
 
 GitEngine.prototype.dispatchProcess = function(command, deferred) {

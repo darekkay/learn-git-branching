@@ -51,14 +51,6 @@ var expectTreeAsync = function(command, expectedJSON, startJSON) {
   });
 };
 
-var expectLevelSolved = function(levelBlob) {
-  var headless = new HeadlessGit();
-  if (levelBlob.startTree) {
-    headless.gitEngine.loadTreeFromString(levelBlob.startTree);
-  }
-  expectLevelAsync(headless, levelBlob);
-};
-
 var runCommand = function(command, resultHandler) {
   var headless = new HeadlessGit();
   var deferred = Q.defer();
@@ -81,7 +73,6 @@ module.exports = {
   compareAnswer: compareAnswer,
   TIME: TIME,
   expectTreeAsync: expectTreeAsync,
-  expectLevelSolved: expectLevelSolved,
   ONE_COMMIT_TREE: ONE_COMMIT_TREE,
   runCommand: runCommand
 };

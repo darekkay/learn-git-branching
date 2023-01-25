@@ -19,21 +19,7 @@ module.exports = {
   },
 
   ActionTypes: keyMirror({
-    SET_LEVEL_SOLVED: null,
-    RESET_LEVELS_SOLVED: null,
     CHANGE_IS_ANIMATING: null,
-    CHANGE_FLIP_TREE_Y: null,
-    SUBMIT_COMMAND: null,
-    CHANGE_LOCALE: null,
-    CHANGE_LOCALE_FROM_HEADER: null,
-    DISABLE_LEVEL_INSTRUCTIONS: null,
-    /**
-     * only dispatched when you actually
-     * solve the level, not ask for solution
-     * or solve it again.
-     */
-    SOLVE_LEVEL: null,
-    SET_IS_SOLVING_LEVEL: null,
   }),
 
   PayloadSources: keyMirror({

@@ -2,7 +2,6 @@ var Backbone = require('backbone');
 var GRAPHICS = require('../util/constants').GRAPHICS;
 
 var VisBase = require('../visuals/visBase').VisBase;
-var TreeCompare = require('../graph/treeCompare');
 
 var randomHueString = function() {
   var hue = Math.random();
@@ -62,28 +61,7 @@ var VisTag = VisBase.extend({
   },
 
   getDashArray: function() {
-    if (!this.get('gitVisuals').getIsGoalVis()) {
-      return '';
-    }
-    return (this.getIsLevelTagCompared()) ? '' : '--';
-  },
-
-  getIsGoalAndNotCompared: function() {
-    if (!this.get('gitVisuals').getIsGoalVis()) {
-      return false;
-    }
-
-    return !this.getIsLevelTagCompared();
-  },
-
-  /**
-   * returns true if we are a Tag that is not being
-   * compared in the goal (used in a goal visualization context
-   */
-  getIsLevelTagCompared: function() {
-    // we are not main, so return true if its not just main being compared
-    var levelBlob = this.get('gitVisuals').getLevelBlob();
-    return !TreeCompare.onlyMainCompared(levelBlob);
+    return '';
   },
 
   getTagStackIndex: function() {
@@ -217,7 +195,6 @@ var VisTag = VisBase.extend({
   getName: function() {
     var name = this.get('tag').getName();
     var isRemote = this.getIsRemote();
-    var isHg = this.gitEngine.getIsHg();
 
     return name;
   },
@@ -240,10 +217,6 @@ var VisTag = VisBase.extend({
     this.removeKeys(['text', 'rect']);
     // also need to remove from this.gitVisuals
     this.gitVisuals.removeVisTag(this);
-  },
-
-  handleModeChange: function() {
-
   },
 
   genGraphics: function(paper) {
@@ -329,18 +302,10 @@ var VisTag = VisBase.extend({
       return this.gitEngine.getDetachedHead() ? 1 : 0;
     }
 
-    if (this.getIsGoalAndNotCompared()) {
-      return (this.getTagStackIndex() === 0) ? 0.7 : 0.3;
-    }
-
     return 1;
   },
 
   getStrokeWidth: function() {
-    if (this.getIsGoalAndNotCompared()) {
-      return this.get('stroke-width') / 5.0;
-    }
-
     return this.get('stroke-width');
   },
 

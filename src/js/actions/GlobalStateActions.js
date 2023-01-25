@@ -13,26 +13,6 @@ var GlobalStateActions = {
       isAnimating: isAnimating
     });
   },
-
-  levelSolved: function() {
-    AppDispatcher.handleViewAction({
-      type: ActionTypes.LEVEL_SOLVED,
-    });
-  },
-
-  disableLevelInstructions: function() {
-    AppDispatcher.handleViewAction({
-      type: ActionTypes.DISABLE_LEVEL_INSTRUCTIONS,
-    });
-  },
-
-  changeFlipTreeY: function(flipTreeY) {
-    AppDispatcher.handleViewAction({
-      type: ActionTypes.CHANGE_FLIP_TREE_Y,
-      flipTreeY: flipTreeY
-    });
-  }
-
 };
 
 module.exports = GlobalStateActions;

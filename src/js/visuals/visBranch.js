@@ -84,31 +84,7 @@ var VisBranch = VisBase.extend({
   },
 
   getDashArray: function() {
-    if (!this.get('gitVisuals').getIsGoalVis()) {
-      return '';
-    }
-    return (this.getIsLevelBranchCompared()) ? '' : '--';
-  },
-
-  getIsGoalAndNotCompared: function() {
-    if (!this.get('gitVisuals').getIsGoalVis()) {
-      return false;
-    }
-
-    return !this.getIsLevelBranchCompared();
-  },
-
-  /**
-   * returns true if we are a branch that is not being
-   * compared in the goal (used in a goal visualization context
-   */
-  getIsLevelBranchCompared: function() {
-    if (this.getIsMain()) {
-      return true; // main always compared
-    }
-    // we are not main, so return true if its not just main being compared
-    var levelBlob = this.get('gitVisuals').getLevelBlob();
-    return !TreeCompare.onlyMainCompared(levelBlob);
+    return '';
   },
 
   getIsMain: function() {
@@ -352,11 +328,6 @@ var VisBranch = VisBase.extend({
     var name = this.get('branch').getName();
     var selected = this.get('branch') === this.gitEngine.HEAD.get('target');
     var isRemote = this.getIsRemote();
-    var isHg = this.gitEngine.getIsHg();
-
-    if (name === 'HEAD' && isHg) {
-      name = '.';
-    }
 
     var after = (selected && !this.getIsInOrigin() && !isRemote) ? '*' : '';
     return name + after;
@@ -396,10 +367,6 @@ var VisBranch = VisBase.extend({
     this.removeKeys(['text', 'arrow', 'rect']);
     // also need to remove from this.gitVisuals
     this.gitVisuals.removeVisBranch(this);
-  },
-
-  handleModeChange: function() {
-
   },
 
   genGraphics: function(paper) {
@@ -491,18 +458,10 @@ var VisBranch = VisBase.extend({
       return this.gitEngine.getDetachedHead() ? 1 : 0;
     }
 
-    if (this.getIsGoalAndNotCompared()) {
-      return (this.getBranchStackIndex() === 0) ? 0.7 : 0.3;
-    }
-
     return 1;
   },
 
   getStrokeWidth: function() {
-    if (this.getIsGoalAndNotCompared()) {
-      return this.get('stroke-width') / 5.0;
-    }
-
     return this.get('stroke-width');
   },
 

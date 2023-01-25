@@ -1,15 +1,7 @@
-var LocaleStore = require('../stores/LocaleStore');
-
 var _ = require('underscore');
 var strings = require('../intl/strings').strings;
 
-var getDefaultLocale = LocaleStore.getDefaultLocale;
-
-var fallbackMap = {
-  'zh_TW': 'zh_CN',
-  'es_AR': 'es_ES',
-  'es_MX': 'es_ES'
-};
+var defaultLocale = "en_US";
 
 // lets change underscores template settings so it interpolates
 // things like "{branchName} does not exist".
@@ -33,18 +25,7 @@ var str = exports.str = function(key, params) {
   // 'You can not delete the branch bugFix because you are currently on that branch!
   //  This is error number 3'
 
-  var locale = LocaleStore.getLocale();
-  if (!strings[key]) {
-    console.warn('NO INTL support for key ' + key);
-    return 'NO INTL support for key ' + key + '. this is probably a dev error';
-  }
-
-  if (!strings[key][locale]) {
-    // try falling back to another locale if in the map
-    locale = fallbackMap[locale] || getDefaultLocale();
-  }
-
-  if (!strings[key][locale]) {
+  if (!strings[key][defaultLocale]) {
     if (key !== 'error-untranslated') {
       return str('error-untranslated');
     }
@@ -52,16 +33,16 @@ var str = exports.str = function(key, params) {
   }
 
   return template(
-    strings[key][locale],
+    strings[key][defaultLocale],
     params
   );
 };
 
-var getIntlKey = exports.getIntlKey = function(obj, key, overrideLocale) {
+var getIntlKey = exports.getIntlKey = function(obj, key) {
   if (!obj || !obj[key]) {
     throw new Error('that key ' + key + ' doesn\'t exist in this blob ' + obj);
   }
-  if (!obj[key][getDefaultLocale()]) {
+  if (!obj[key][defaultLocale]) {
     console.warn(
       'WARNING!! This blob does not have intl support:',
       obj,
@@ -70,8 +51,7 @@ var getIntlKey = exports.getIntlKey = function(obj, key, overrideLocale) {
     );
   }
 
-  var locale = overrideLocale || LocaleStore.getLocale();
-  return obj[key][locale];
+  return obj[key][defaultLocale];
 };
 
 exports.todo = function(str) {
@@ -79,40 +59,20 @@ exports.todo = function(str) {
 };
 
 exports.getDialog = function(obj) {
-  return getIntlKey(obj, 'dialog') || obj.dialog[getDefaultLocale()];
+  return getIntlKey(obj, 'dialog') || obj.dialog[defaultLocale];
 };
 
 exports.getHint = function(level) {
   if (!getIntlKey(level, 'hint')) {
-    return getIntlKey(level, 'hint', getDefaultLocale()) + ' -- ' + str('error-untranslated');
+    return getIntlKey(level, 'hint', defaultLocale) + ' -- ' + str('error-untranslated');
   }
   return getIntlKey(level, 'hint');
 };
 
 exports.getName = function(level) {
   if (!getIntlKey(level, 'name')) {
-    return getIntlKey(level, 'name', getDefaultLocale()) + ' -- ' + str('error-untranslated');
+    return getIntlKey(level, 'name', defaultLocale) + ' -- ' + str('error-untranslated');
   }
   return getIntlKey(level, 'name');
 };
 
-exports.getStartDialog = function(level) {
-  var startDialog = getIntlKey(level, 'startDialog');
-  if (startDialog) { return startDialog; }
-
-  // this level translation isn't supported yet, so lets add
-  // an alert to the front and give the english version.
-  var errorAlert = {
-    type: 'ModalAlert',
-    options: {
-      markdown: str('error-untranslated')
-    }
-  };
-  var startCopy = Object.assign(
-    {},
-    level.startDialog[getDefaultLocale()] || level.startDialog
-  );
-  startCopy.childViews.unshift(errorAlert);
-
-  return startCopy;
-};

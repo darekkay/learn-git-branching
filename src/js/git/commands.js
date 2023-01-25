@@ -211,8 +211,8 @@ var commandConfig = {
   gc: {
     displayName: 'gc',
     regex: /^git +gc($|\s)/,
-    execute: function(engine, command) {
-      engine.pruneTree(false);
+    execute: function(engine) {
+      engine.pruneTree();
     }
   },
 
@@ -501,7 +501,6 @@ var commandConfig = {
   },
 
   add: {
-    dontCountForGolf: true,
     sc: /^ga($|\s)/,
     regex: /^git +add($|\s)/,
     execute: function() {
@@ -590,7 +589,6 @@ var commandConfig = {
   },
 
   revlist: {
-    dontCountForGolf: true,
     displayName: 'rev-list',
     regex: /^git +rev-list($|\s)/,
     execute: function(engine, command) {
@@ -602,7 +600,6 @@ var commandConfig = {
   },
 
   log: {
-    dontCountForGolf: true,
     regex: /^git +log($|\s)/,
     execute: function(engine, command) {
       var generalArgs = command.getGeneralArgs();
@@ -613,7 +610,6 @@ var commandConfig = {
   },
 
   show: {
-    dontCountForGolf: true,
     regex: /^git +show($|\s)/,
     execute: function(engine, command) {
       var generalArgs = command.getGeneralArgs();
@@ -638,29 +634,6 @@ var commandConfig = {
       var commandOptions = command.getOptionsMap();
       var generalArgs = command.getGeneralArgs();
 
-      if (commandOptions['-i']) {
-        var args = commandOptions['-i'].concat(generalArgs);
-        command.twoArgsImpliedHead(args, ' -i');
-
-        if (commandOptions['--interactive-test']) {
-          engine.rebaseInteractiveTest(
-            args[0],
-            args[1], {
-              interactiveTest: commandOptions['--interactive-test']
-            }
-          );
-        } else {
-          engine.rebaseInteractive(
-            args[0],
-            args[1], {
-              aboveAll: !!commandOptions['--aboveAll'],
-              initialCommitOrdering: commandOptions['--solution-ordering']
-            }
-          );
-        }
-        return;
-      }
-
       if (commandOptions['--onto']) {
         var args = commandOptions['--onto'].concat(generalArgs);
         command.threeArgsImpliedHead(args, ' --onto');
@@ -680,7 +653,6 @@ var commandConfig = {
   },
 
   status: {
-    dontCountForGolf: true,
     sc: /^(gst|gs|git st)($|\s)/,
     regex: /^git +status($|\s)/,
     execute: function(engine) {

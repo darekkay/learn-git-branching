@@ -2,14 +2,15 @@
  * Constants....!!!
  */
 var TIME = {
-  betweenCommandsDelay: 400
+  // betweenCommandsDelay: 400
+  betweenCommandsDelay: 100
 };
 
 var VIEWPORT = {
   minZoom: 0.55,
   maxZoom: 1.25,
-  minWidth: 600,
-  minHeight: 600
+  minWidth: 300,
+  minHeight: 300
 };
 
 var GRAPHICS = {
@@ -18,7 +19,8 @@ var GRAPHICS = {
   nodeRadius: 17,
   curveControlPointOffset: 50,
   defaultEasing: 'easeInOut',
-  defaultAnimationTime: 400,
+  // defaultAnimationTime: 400,
+  defaultAnimationTime: 100,
 
   rectFill: 'hsb(0.8816909813322127,0.6,1)',
   headRectFill: '#7278FF',

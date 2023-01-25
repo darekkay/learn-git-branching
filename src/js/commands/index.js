@@ -2,14 +2,12 @@ var intl = require('../intl');
 
 var Errors = require('../util/errors');
 var GitCommands = require('../git/commands');
-var MercurialCommands = require('../mercurial/commands');
 
 var CommandProcessError = Errors.CommandProcessError;
 var CommandResult = Errors.CommandResult;
 
 var commandConfigs = {
   'git': GitCommands.commandConfig,
-  'hg': MercurialCommands.commandConfig
 };
 
 var commands = {
@@ -49,7 +47,7 @@ var commands = {
   },
 
   blankMap: function() {
-    return {git: {}, hg: {}};
+    return {git: {}};
   },
 
   getShortcutMap: function() {
@@ -84,20 +82,6 @@ var commands = {
       map[vcs][displayName] = config.regex;
     });
     return map;
-  },
-
-  /**
-   * which commands count for the git golf game
-   */
-  getCommandsThatCount: function() {
-    var counted = this.blankMap();
-    this.loop(function(config, name, vcs) {
-      if (config.dontCountForGolf) {
-        return;
-      }
-      counted[vcs][name] = config.regex;
-    });
-    return counted;
   },
 
   loop: function(callback, context) {

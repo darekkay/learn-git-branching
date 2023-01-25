@@ -29,9 +29,7 @@ ParseWaterfall.prototype.initParseWaterfall = function() {
   // level too early (which barfs our init)
   this.parseWaterfall = this.options.parseWaterfall || [
     Commands.parse,
-    SandboxCommands.parse,
-    SandboxCommands.getOptimisticLevelParse(),
-    SandboxCommands.getOptimisticLevelBuilderParse()
+    SandboxCommands.parse
   ];
 };
 

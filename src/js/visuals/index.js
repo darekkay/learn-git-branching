@@ -3,7 +3,6 @@ var Q = require('q');
 var intl = require('../intl');
 var GRAPHICS = require('../util/constants').GRAPHICS;
 var debounce = require('../util/debounce');
-var GlobalStateStore = require('../stores/GlobalStateStore');
 
 var VisNode = require('../visuals/visNode').VisNode;
 var VisBranch = require('../visuals/visBranch').VisBranch;
@@ -126,13 +125,10 @@ GitVisuals.prototype.initHeadBranch = function() {
 };
 
 GitVisuals.prototype.getScreenPadding = function() {
-  // if we are flipping the tree, the helper bar gets in the way
-  var topFactor = (GlobalStateStore.getFlipTreeY()) ? 3 : 1.5;
-
   // for now we return the node radius subtracted from the walls
   return {
     widthPadding: GRAPHICS.nodeRadius * 1.5,
-    topHeightPadding: GRAPHICS.nodeRadius * topFactor,
+    topHeightPadding: GRAPHICS.nodeRadius * 1.5,
     // we pad the bottom a lot more so the branches wont go off screen
     bottomHeightPadding: GRAPHICS.nodeRadius * 5
   };
@@ -163,14 +159,6 @@ GitVisuals.prototype.getFlipPos = function() {
   return this.flipFraction * (max - min) + min;
 };
 
-GitVisuals.prototype.getIsGoalVis = function() {
-  return !!this.options.isGoalVis;
-};
-
-GitVisuals.prototype.getLevelBlob = function() {
-  return this.visualization.options.levelBlob || {};
-};
-
 GitVisuals.prototype.toScreenCoords = function(pos) {
   if (!this.paper.width) {
     throw new Error('being called too early for screen coords');
@@ -188,10 +176,6 @@ GitVisuals.prototype.toScreenCoords = function(pos) {
   var x = shrink(pos.x, this.paper.width, padding.widthPadding);
   var y =
     asymShrink(pos.y, this.paper.height, padding.topHeightPadding, padding.bottomHeightPadding);
-
-  if (GlobalStateStore.getFlipTreeY()) {
-    y = this.paper.height - y;
-  }
 
   return {x: x, y: y};
 };

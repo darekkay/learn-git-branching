@@ -121,7 +121,8 @@ var buildIndex = function(done) {
 
 var getBundle = function() {
   return browserify({
-    entries: [...glob.sync('src/**/*.js'), ...glob.sync('src/**/*.jsx')],
+    entries: [...glob.sync('src/js/app/index.js')],
+    // entries: [...glob.sync('src/js/entry/index.js')],
     debug: true,
   })
   .transform(babelify, { presets: ['@babel/preset-react'] })
@@ -227,7 +228,6 @@ var watching = function() {
     '__tests__/git.spec.js',
     'src/js/**/*.js',
     'src/js/**/**/*.js',
-    'src/levels/**/*.js'
   ], series([fastBuild , jasmine, jshint, lintStrings]));
 };
 

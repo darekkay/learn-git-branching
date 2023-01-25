@@ -51,7 +51,6 @@ var VisEdge = VisBase.extend({
     // is M(move abs) C (curve to) (control point 1) (control point 2) (final point)
     // the control points have to be __below__ to get the curve starting off straight.
 
-    var flipFactor = (GlobalStateStore.getFlipTreeY()) ? -1 : 1;
     var coords = function(pos) {
       return String(Math.round(pos.x)) + ',' + String(Math.round(pos.y));
     };
@@ -59,13 +58,13 @@ var VisEdge = VisBase.extend({
       delta = delta || GRAPHICS.curveControlPointOffset;
       return {
         x: pos.x,
-        y: pos.y + flipFactor * delta * dir
+        y: pos.y + delta * dir
       };
     };
     var offset2d = function(pos, x, y) {
       return {
         x: pos.x + x,
-        y: pos.y + flipFactor * y
+        y: pos.y + y
       };
     };
 

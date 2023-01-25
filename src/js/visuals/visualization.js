@@ -1,6 +1,9 @@
 var Backbone = require('backbone');
+var Q = require("q");
 
 var Collections = require('../models/collections');
+var Command = require("../models/commandModel").Command;
+var util = require("../util");
 var CommitCollection = Collections.CommitCollection;
 var BranchCollection = Collections.BranchCollection;
 var TagCollection = Collections.TagCollection;
@@ -49,9 +52,8 @@ var Visualization = Backbone.View.extend({
       branchCollection: this.branchCollection,
       tagCollection: this.tagCollection,
       paper: this.paper,
-      noClick: this.options.noClick,
-      isGoalVis: this.options.isGoalVis,
-      smallCanvas: this.options.smallCanvas,
+      noClick: true,
+      smallCanvas: true,
       visualization: this
     });
 
@@ -211,6 +213,37 @@ var Visualization = Backbone.View.extend({
     var tree = JSON.parse(unescape(treeString));
     return tree.originTree;
   },
+
+  sendCommand: function(value) {
+    var deferred = Q.defer();
+    var chain = deferred.promise;
+
+    var commands = [];
+
+    util.splitTextCommand(value, function(commandStr) {
+      chain = chain.then(function() {
+        var commandObj = new Command({
+          rawStr: commandStr
+        });
+
+        var thisDeferred = Q.defer();
+        this.gitEngine.dispatch(commandObj, thisDeferred);
+        commands.push(commandObj);
+        return thisDeferred.promise;
+      }.bind(this));
+    }, this);
+
+    chain.fail(function(err) {
+      console.log('!!!!!!!! error !!!!!!!');
+      console.log(err);
+      console.log(err.stack);
+      console.log('!!!!!!!!!!!!!!!!!!!!!!');
+    });
+    deferred.resolve();
+    return chain;
+  },
+
+
 
   reset: function(tree) {
     var treeString = tree || this.treeString;
